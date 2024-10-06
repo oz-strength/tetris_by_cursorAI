@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>테트리스 게임</title>
+    <style>
+      #game-container {
+        display: flex;
+      }
+      #game-board {
+        width: 300px;
+        height: 600px;
+        border: 1px solid black;
+        position: relative;
+      }
+      .tetromino {
+        position: absolute;
+        width: 30px;
+        height: 30px;
+        box-sizing: border-box;
+        border: 1px solid black;
+      }
+      #next-piece {
+        width: 120px;
+        height: 120px;
+        border: 1px solid black;
+        margin-left: 20px;
+        position: relative;
+      }
+      #score {
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-container">
+      <div id="game-board"></div>
+      <div>
+        <div id="next-piece"></div>
+        <div id="score">점수: 0</div>
+      </div>
+    </div>
+    <script>
+      const gameBoard = document.getElementById("game-board");
+      const boardWidth = 10;
+      const boardHeight = 20;
+      let board = Array(boardHeight)
+        .fill()
+        .map(() => Array(boardWidth).fill(0));
+
+      const tetrominoes = [
+        [[1, 1, 1, 1]],
+        [
+          [1, 1],
+          [1, 1],
+        ],
+        [
+          [1, 1, 1],
+          [0, 1, 0],
+        ],
+        [
+          [1, 1, 1],
+          [1, 0, 0],
+        ],
+        [
+          [1, 1, 1],
+          [0, 0, 1],
+        ],
+        [
+          [1, 1, 0],
+          [0, 1, 1],
+        ],
+        [
+          [0, 1, 1],
+          [1, 1, 0],
+        ],
+      ];
+
+      let currentTetromino;
+      let currentPosition;
+      let currentColor;
+
+      let score = 0;
+      let nextTetromino;
+      let nextColor;
+
+      function updateScore(linesCleared) {
+        score += linesCleared * 5;
+        document.getElementById("score").textContent = `점수: ${score}`;
+      }
+
+      function createTetromino() {
+        if (!nextTetromino) {
+          nextTetromino = getRandomTetromino();
+          nextColor = getRandomColor();
+        }
+        currentTetromino = nextTetromino;
+        currentColor = nextColor;
+        currentPosition = {
+          x:
+            Math.floor(boardWidth / 2) -
+            Math.floor(currentTetromino[0].length / 2),
+          y: 0,
+        };
+        nextTetromino = getRandomTetromino();
+        nextColor = getRandomColor();
+        if (isCollision()) {
+          alert("게임 오버!");
+          resetGame();
+        } else {
+          drawTetromino();
+          drawNextPiece();
+        }
+      }
+
+      function getRandomTetromino() {
+        const randomIndex = Math.floor(Math.random() * tetrominoes.length);
+        return tetrominoes[randomIndex];
+      }
+
+      function drawTetromino() {
+        gameBoard.innerHTML = "";
+        // 고정된 블록 그리기
+        board.forEach((row, y) => {
+          row.forEach((value, x) => {
+            if (value) {
+              const block = document.createElement("div");
+              block.classList.add("tetromino");
+              block.style.left = `${x * 30}px`;
+              block.style.top = `${y * 30}px`;
+              block.style.backgroundColor = value; // 색상 값 사용
+              gameBoard.appendChild(block);
+            }
+          });
+        });
+        // 현재 테트로미노 그리기
+        currentTetromino.forEach((row, y) => {
+          row.forEach((value, x) => {
+            if (value) {
+              const block = document.createElement("div");
+              block.classList.add("tetromino");
+              block.style.left = `${(currentPosition.x + x) * 30}px`;
+              block.style.top = `${(currentPosition.y + y) * 30}px`;
+              block.style.backgroundColor = currentColor; // 현재 색상 사용
+              gameBoard.appendChild(block);
+            }
+          });
+        });
+      }
+
+      function drawNextPiece() {
+        const nextPieceBoard = document.getElementById("next-piece");
+        nextPieceBoard.innerHTML = "";
+        nextTetromino.forEach((row, y) => {
+          row.forEach((value, x) => {
+            if (value) {
+              const block = document.createElement("div");
+              block.classList.add("tetromino");
+              block.style.left = `${x * 30}px`;
+              block.style.top = `${y * 30}px`;
+              block.style.backgroundColor = nextColor;
+              nextPieceBoard.appendChild(block);
+            }
+          });
+        });
+      }
+
+      function getRandomColor() {
+        const colors = [
+          "red",
+          "blue",
+          "green",
+          "yellow",
+          "purple",
+          "orange",
+          "cyan",
+        ];
+        return colors[Math.floor(Math.random() * colors.length)];
+      }
+
+      function moveTetromino(dx, dy) {
+        currentPosition.x += dx;
+        currentPosition.y += dy;
+        if (isCollision()) {
+          currentPosition.x -= dx;
+          currentPosition.y -= dy;
+          if (dy > 0) {
+            mergeTetromino();
+            createTetromino();
+          }
+        }
+        drawTetromino();
+      }
+
+      function isCollision() {
+        return currentTetromino.some((row, y) => {
+          return row.some((value, x) => {
+            if (value) {
+              const boardX = currentPosition.x + x;
+              const boardY = currentPosition.y + y;
+              return (
+                boardX < 0 ||
+                boardX >= boardWidth ||
+                boardY >= boardHeight ||
+                (boardY >= 0 && board[boardY][boardX])
+              );
+            }
+            return false;
+          });
+        });
+      }
+
+      function mergeTetromino() {
+        currentTetromino.forEach((row, y) => {
+          row.forEach((value, x) => {
+            if (value) {
+              board[currentPosition.y + y][currentPosition.x + x] =
+                currentColor;
+            }
+          });
+        });
+        clearLines();
+      }
+
+      function clearLines() {
+        let linesCleared = 0;
+        for (let y = boardHeight - 1; y >= 0; y--) {
+          if (board[y].every((cell) => cell)) {
+            // 해당 줄 제거
+            board.splice(y, 1);
+            // 새로운 빈 줄 추가
+            board.unshift(Array(boardWidth).fill(0));
+            linesCleared++;
+            // y 값을 증가시켜 같은 줄을 다시 검사
+            y++;
+          }
+        }
+        if (linesCleared > 0) {
+          updateScore(linesCleared);
+        }
+      }
+
+      function resetGame() {
+        board = Array(boardHeight)
+          .fill()
+          .map(() => Array(boardWidth).fill(0));
+        score = 0;
+        document.getElementById("score").textContent = `점수: ${score}`;
+        createTetromino();
+      }
+
+      document.addEventListener("keydown", (e) => {
+        switch (e.key) {
+          case "ArrowLeft":
+            moveTetromino(-1, 0);
+            break;
+          case "ArrowRight":
+            moveTetromino(1, 0);
+            break;
+          case "ArrowDown":
+            moveTetromino(0, 1);
+            break;
+          case "ArrowUp":
+            rotateTetromino();
+            break;
+          case "Enter":
+            dropTetromino();
+            break;
+        }
+      });
+
+      function rotateTetromino() {
+        const rotated = currentTetromino[0].map((_, index) =>
+          currentTetromino.map((row) => row[index]).reverse()
+        );
+        const previousTetromino = currentTetromino;
+        currentTetromino = rotated;
+        if (isCollision()) {
+          currentTetromino = previousTetromino;
+        }
+        drawTetromino();
+      }
+
+      function gameLoop() {
+        moveTetromino(0, 1);
+        setTimeout(gameLoop, 1000);
+      }
+
+      function dropTetromino() {
+        while (!isCollision()) {
+          currentPosition.y++;
+        }
+        currentPosition.y--;
+        mergeTetromino();
+        createTetromino();
+      }
+
+      createTetromino();
+      gameLoop();
+    </script>
+  </body>
+</html>
